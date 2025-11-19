@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
 
-// كل المسارات المتاحة
+// كل المسارات
 const categories = [
   "waifu", "neko", "shinobu", "megumin",
   "bully", "cuddle", "cry", "hug",
@@ -12,17 +12,16 @@ const categories = [
   "poke", "dance", "cringe"
 ];
 
-// دالة تجيب رابط واحد بدون GIF
+// جلب صورة واحدة بدون GIF
 async function getImage(type) {
   try {
-    const api = `https://api.waifu.pics/sfw/${type}`;
-    const data = await fetch(api).then(r => r.json());
-    if (!data || !data.url) return null;
+    const url = `https://api.waifu.pics/sfw/${type}`;
+    const data = await (await fetch(url)).json();
 
+    if (!data || !data.url) return null;
     if (data.url.endsWith(".gif")) return null;
 
     return data.url;
-
   } catch {
     return null;
   }
@@ -33,9 +32,21 @@ export default async function handler(req, res) {
     const randomType = categories[Math.floor(Math.random() * categories.length)];
     const images = [];
 
-    while (images.length < 10) {
+    let tries = 0;
+
+    // نسمح بـ 40 محاولة فقط (علشان ما يعلق)
+    while (images.length < 10 && tries < 40) {
       const img = await getImage(randomType);
       if (img) images.push(img);
+
+      tries++;
+    }
+
+    if (images.length === 0) {
+      return res.status(500).json({
+        status: "error",
+        message: "لم يتم العثور على صور (كل النتائج GIF)"
+      });
     }
 
     res.status(200).json({
